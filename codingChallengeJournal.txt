@@ -1,0 +1,15 @@
+# Email states that coding channel requires python 3 and tensorflow 1.4 (latest tensorflow is now 1.9, according to their Github)
+# Try to create a conda environment specific to the coding channel, get error:Fetching package metadata ...........
+>conda create -n openAI python=3.7 tensorflow=1.4
+
+Solving package specifications: .
+UnsatisfiableError: The following specifications were found to be in conflict:
+  - python 3.7*
+  - tensorflow 1.4* -> tensorflow-base 1.4.1 -> enum34 >=1.1.6 -> python 2.7* -> openssl 1.0.1*
+  - tensorflow 1.4* -> tensorflow-base 1.4.1 -> enum34 >=1.1.6 -> python 2.7* -> readline 6.2*
+  - tensorflow 1.4* -> tensorflow-base 1.4.1 -> enum34 >=1.1.6 -> python 2.7* -> tk 8.5*
+Use "conda info <package>" to see the dependencies for each package.
+
+# The same command with python=3.6 completes with no problems
+
+# make virtual-env for 
