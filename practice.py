@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import time 
 
 
-"""A low level MLP classifier implemented in Tensorflow"""
+"""A low level MLP classifier implemented in Tensorflow. 'Low level' as in it uses explicit activation and matmul operations instead of tf.layers.dense. The optimizer is still abstracted by TF with very little effort from yours truly. """
 # Have tensorflow 1.4 and python 3.x installed
 # know how to make a multi-level perceptron classifier
 # know how to get variable from a graph
@@ -104,24 +104,27 @@ elif(dataset=="digits"):
 number_features = X.shape[1]
 number_classes = int(np.max(Y))+1# 3 classes for iris dataset
 
-# weights
-w0 = tf.Variable(tf.truncated_normal([number_features,layer0_size],stddev=0.05),name='w0')
-w1 = tf.Variable(tf.truncated_normal([layer1_size,layer2_size],stddev=0.05),name='w1')
-w2 = tf.Variable(tf.truncated_normal([layer2_size,layer3_size],stddev=0.05),name='w2')
-w3 = tf.Variable(tf.truncated_normal([layer3_size,layer4_size],stddev=0.05),name='w3')
-w4 = tf.Variable(tf.truncated_normal([layer4_size,layer5_size],stddev=0.05),name='w4')
-w5 = tf.Variable(tf.truncated_normal([layer5_size,layer6_size],stddev=0.05),name='w5')
-w6 = tf.Variable(tf.truncated_normal([layer6_size,number_classes],stddev=0.05),name='w6')
 
-# biases
-starting_bias = 1e-3
-b0 = tf.Variable(starting_bias ,name="b0")
-b1 = tf.Variable(starting_bias ,name="b1")
-b2 = tf.Variable(starting_bias ,name="b2")
-b3 = tf.Variable(starting_bias ,name="b3")
-b4 = tf.Variable(starting_bias ,name="b4")
-b5 = tf.Variable(starting_bias ,name="b5")
-b6 = tf.Variable(starting_bias ,name="b6")
+# set up variablse
+with tf.variable_scope("lucky_MLP"):
+	# weights
+	w0 = tf.get_variable("w0",initializer=tf.truncated_normal([number_features,layer0_size],stddev=0.05))
+	w1 = tf.get_variable("w1",initializer=tf.truncated_normal([layer1_size,layer2_size],stddev=0.05))
+	w2 = tf.get_variable("w2",initializer=tf.truncated_normal([layer2_size,layer3_size],stddev=0.05))
+	w3 = tf.get_variable("w3",initializer=tf.truncated_normal([layer3_size,layer4_size],stddev=0.05))
+	w4 = tf.get_variable("w4",initializer=tf.truncated_normal([layer4_size,layer5_size],stddev=0.05))
+	w5 = tf.get_variable("w5",initializer=tf.truncated_normal([layer5_size,layer6_size],stddev=0.05))
+	w6 = tf.get_variable("w6",initializer=tf.truncated_normal([layer6_size,number_classes],stddev=0.05))
+
+	# biases
+	starting_bias = 1e-3
+	b0 = tf.get_variable("b0",initializer=starting_bias)
+	b1 = tf.get_variable("b1",initializer=starting_bias)
+	b2 = tf.get_variable("b2",initializer=starting_bias)
+	b3 = tf.get_variable("b3",initializer=starting_bias)
+	b4 = tf.get_variable("b4",initializer=starting_bias)
+	b5 = tf.get_variable("b5",initializer=starting_bias)
+	b6 = tf.get_variable("b6",initializer=starting_bias)
 
 # 
 inputs = tf.placeholder("float",[None,number_features],name="inputs")
@@ -234,7 +237,7 @@ def main():
 		#tf.global_variables_initializer()
 		tf.initialize_all_variables().run()
 
-		train_writer = tf.summary.FileWriter(graph_dir+dataset+"/", sess.graph)
+		train_writer = tf.summary.FileWriter(graph_dir+"layersize"+str(layer_size)+"dropout"+str(int(dropout_rate*100))+"div"+str(unit_divisor)+dataset+"/", sess.graph)
 		print("./"+dataset+"/"+graph_dir)
 
 		print("start training")
@@ -270,9 +273,22 @@ def main():
 				train_writer.add_summary(summary,epoch_counter)#,step=tf.train.get_global_step())
 
 				elapsed = time.time() - t0
+
 				print("training / validation loss epoch %i : %.3e / %.3e "%(epoch_counter,train_loss,val_loss))
 				print("training / validation accuracy: %.3e / %.3e"%(train_accuracy,val_accuracy))
 				print("time elapse: %.2f"%elapsed)
+
+
+				if(0):
+					# Hints say to "be able to get variables from  a graph" and here are a few ways to do that: 
+					with tf.variable_scope("lucky_MLP",reuse=True):
+						# note that variables have to be initialized with get_variable and reuse=True has to be set in the same scope as they were initialized in
+						test = tf.get_variable("b0")
+						test2 = tf.get_variable("w0")
+						print("bias 0 and mean weights_0 = ",test.eval(sess),np.mean(test2.eval(sess)))
+					# get values for layers or weights with sess.run
+					print("layer 3 mean values",np.mean(sess.run(layer_3,feed_dict = {inputs: inputs_, targets: targets_, training_mode: False})))
+					print("weights 3 mean values",np.mean(sess.run(w3,feed_dict = {inputs: inputs_, targets: targets_, training_mode: False})))
  				
 	
 main()
