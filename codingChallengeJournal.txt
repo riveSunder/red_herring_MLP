@@ -31,4 +31,4 @@ pip3 install --upgrade tensorflow==1.4
 # With how I've built it so far, I can't log both training and validation accuracy/loss, because the summary ops are defined (and named) in the graph and the summary writer is called from the training loop. Therefore, everything that is logged is from validation runs. 
 
 
-
+# Using the tf.layers and tf.contrib.learn, I wrote another, more abstraced MLP model for classification. This one has better performance than the low-level model using tf.matmul operations. 
