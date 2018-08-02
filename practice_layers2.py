@@ -126,10 +126,11 @@ print(number_classes)
 # 
 inputs = tf.placeholder("float",[None,number_features],name="inputs")
 targets = tf.placeholder("float",[None,number_classes],name="targets")
+training_mode = tf.placeholder("bool",name="mode")
 mode = tf.placeholder("bool",name="mode")
 
 
-def layers_MLP(inputs,targets,mode):
+def layers_MLP(inputs,targets,training_mode):
 	# define the graph using tf.layers 
 	inputs =  tf.reshape(inputs,[-1,number_features])
 
@@ -176,27 +177,6 @@ def layers_MLP(inputs,targets,mode):
                              units=number_classes,
                              activation=None)
 	
-	if (1):# mode != learn.ModeKeys.INFER:
-		one_hot_labels = tf.one_hot(indices = tf.cast(targets,tf.int32),depth=number_classes) 
-		loss = tf.losses.softmax_cross_entropy(onehot_labels = one_hot_labels,
-				                      logits = logits)
-
-		tf.summary.scalar('cross_entropy', loss)
-
-	if (1): #mode == learn.ModeKeys.TRAIN:
-		#trainOp = tf.train.MomentumOptimizer(lR,mom).minimize(loss,global_step = tf.contrib.framework.get_global_step())
-	
-		train_opAdam = tf.train.AdamOptimizer(\
-			learning_rate=learning_rate,beta1=0.9,\
-			beta2 = 0.999,epsilon=1e-08,\
-			use_locking=False,name='Adam').minimize(\
-				loss,global_step = tf.contrib.framework.get_global_step())
-
-		train_opSGD = tf.contrib.layers.optimize_loss(\
-			loss = loss,\
-			global_step = tf.contrib.framework.get_global_step(),\
-			learning_rate = learning_rate,
-			optimizer = "SGD")
 	if(dataset=="digits"):
 		tf.summary.image('input_image', tf.reshape(inputs,[-1,8,8,1]))
 		tf.summary.image('layer_0',tf.reshape(layer_0,[-1,dimX,dimY,1]))
@@ -215,10 +195,40 @@ def layers_MLP(inputs,targets,mode):
 
 	# attach summaries for tensorboad https://www.tensorflow.org/get_started/summaries_and_tensorboard
 
-	return model_fn_lib.ModelFnOps(\
-		mode=mode,\
-		predictions=predictions,\
-		loss=loss, train_op=train_opAdam)\
+	return predictions
+
+predictions = layers_MLP(inputs,targets,training_mode)
+
+probabilities = predictions["probabilities"]
+classes = predictions["classes"]
+
+one_hot_labels = tf.one_hot(indices = tf.cast(targets,tf.int32),depth=number_classes) 
+
+print(targets.shape,one_hot_labels.shape,probabilities.shape)
+loss = tf.losses.softmax_cross_entropy(onehot_labels = targets,logits = probabilities)
+
+
+correct_predictions = tf.equal(classes, tf.argmax(targets,1))
+accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
+tf.summary.scalar("accuracy",accuracy)
+
+tf.summary.scalar('cross_entropy', loss)
+
+
+
+merge = tf.summary.merge_all()
+
+train_opAdam = tf.train.AdamOptimizer(\
+    learning_rate=learning_rate,beta1=0.9,\
+    beta2 = 0.999,epsilon=1e-08,\
+    use_locking=False,name='Adam').minimize(\
+	    loss,global_step = tf.contrib.framework.get_global_step())
+#if(0):
+train_opSGD = tf.contrib.layers.optimize_loss(\
+    loss = loss,\
+    global_step = tf.contrib.framework.get_global_step(),\
+    learning_rate = learning_rate,
+    optimizer = "SGD")
 
 init = tf.global_variables_initializer() # deprecated ....
 
@@ -231,86 +241,81 @@ init = tf.global_variables_initializer() # deprecated ....
 
 
 def main(unused_argv):
-	# Divvy up the data train/validation/test
+    # Divvy up the data train/validation/test
 
-	#losses = []
-	# set up one hot labels for targets
-	number_entries = Y.shape[0]
-	if(0):	
-		onehot_Y = np.zeros((number_entries,number_classes))
-		for counter in range(number_entries):
-			onehot_Y[counter,Y[counter]] = 1
-	else:
-		onehot_Y = Y
+    #losses = []
+    # set up one hot labels for targets
+    number_entries = Y.shape[0]
+    if(1):	
+	    onehot_Y = np.zeros((number_entries,number_classes))
+	    for counter in range(number_entries):
+		    onehot_Y[counter,Y[counter]] = 1
+    else:
+        onehot_Y = Y
+        #print(np.shape(onehot_Y))
 
-	# divvy up training and data into training, validation, and test
-	np.random.seed(random_seed)
-	np.random.shuffle(X)
-	np.random.seed(random_seed)
-	np.random.shuffle(onehot_Y)
-	validation_size = int(0.1*number_entries)
+    # divvy up training and data into training, validation, and test
+    np.random.seed(random_seed)
+    np.random.shuffle(X)
+    np.random.seed(random_seed)
+    np.random.shuffle(onehot_Y)
+    validation_size = int(0.1*number_entries)
 
-	validation_X = X[0:validation_size,:]
-	validation_Y = onehot_Y[0:validation_size]
-	test_X = X[validation_size:validation_size+validation_size,:]
-	test_Y = onehot_Y[validation_size:validation_size+validation_size]
-	
-	train_X = X[validation_size+validation_size:number_entries,:]
-	train_Y = onehot_Y[validation_size+validation_size:number_entries]
+    validation_X = X[0:validation_size,:]
+    validation_Y = onehot_Y[0:validation_size]
+    test_X = X[validation_size:validation_size+validation_size,:]
+    test_Y = onehot_Y[validation_size:validation_size+validation_size]
 
-	
-	# Define the estimator
-	MLP_classifier = learn.Estimator(model_fn = layers_MLP,\
-		model_dir = graph_dir,\
-		config=tf.contrib.learn.RunConfig(save_checkpoints_secs=3))
-
-	#Assign metrics
-	metrics = {"accuracy": learn.MetricSpec(metric_fn=tf.metrics.accuracy,prediction_key="classes")}
-
-	
-	tensors_to_log = {"probabilities": "softmaxTensor"}
-	logging_hook = tf.train.LoggingTensorHook(tensors = tensors_to_log,every_n_iter = 1)
-	
-	validation_metrics = {\
-		"accuracy": learn.MetricSpec(metric_fn=tf.metrics.accuracy,prediction_key="classes"),
-		"precision":\
-			tf.contrib.learn.MetricSpec(\
-			metric_fn=tf.contrib.metrics.streaming_precision,\
-			prediction_key=tf.contrib.learn.PredictionKey.CLASSES),\
-		"recall":\
-			tf.contrib.learn.MetricSpec(\
-			metric_fn=tf.contrib.metrics.streaming_recall,\
-			prediction_key=tf.contrib.learn.PredictionKey.CLASSES)\
-		}
-
-    #evalua during training and stop early if necessary
-	
-	validation_monitor = tf.contrib.learn.monitors.ValidationMonitor(
-		validation_X,
-		validation_Y,
-		every_n_steps=1,
-		metrics=validation_metrics,
-		early_stopping_metric="accuracy",
-		early_stopping_metric_minimize=False,
-		early_stopping_rounds=16400)
-
-	
-	t0 = time.time()
-	print("Begin training model with layer size %i"%layer_size)
-	mode=True
-	MLP_classifier.fit(x=train_X,
-		    y=train_Y,
-		    batch_size = batch_size,
-		    steps = max_steps, # Steps DNE 
-		    monitors = [validation_monitor])
-
+    train_X = X[validation_size+validation_size:number_entries,:]
+    train_Y = onehot_Y[validation_size+validation_size:number_entries]
     
-	print("elapsed time: ",(time.time()-t0))
-	# Evaluate model and display results
-	eval_results = MLP_classifier.evaluate(x=train_X,
-		                          y=train_Y,
-		                          metrics=metrics)
-	print("Validation results", eval_results)
+    with tf.Session() as sess:
+        #tf.global_variables_initializer()
+        tf.initialize_all_variables().run()
+
+        train_writer = tf.summary.FileWriter(graph_dir+"layersize"+str(layer_size)+"dropout"+str(int(dropout_rate*100))+"div"+str(unit_divisor)+dataset+"/", sess.graph)
+        print("./"+dataset+"/"+graph_dir)
+
+        t0 = time.time()
+        print("Begin training model with layer size %i"%layer_size)
+        for epoch_counter in range(max_steps):
+            for batch_counter in range(0,batch_size,len(train_X)):
+
+                # iterate through training data
+                inputs_ = train_X[batch_counter:batch_counter+batch_size]
+                targets_ = train_Y[batch_counter:batch_counter+batch_size]
+                #print(targets_.shape,inputs_.shape)
+                train_opAdam.run(feed_dict = {inputs: inputs_, targets: targets_, training_mode: True})
+            
+
+            if(epoch_counter % 50 == 0):
+
+                # display current loss
+                if (0):
+                    # subsample training set if too large
+                    inputs_ = train_X[0:batch_size]
+                    targets_ = train_Y[0:batch_size]
+                else:
+                    inputs_ = train_X
+                    targets_ = train_Y
+
+                # summarize accuracy and loss for reporting
+                train_accuracy = accuracy.eval(feed_dict={inputs: inputs_, targets: targets_,training_mode: False})
+
+                val_accuracy = accuracy.eval(feed_dict={inputs: validation_X, targets: validation_Y,training_mode: False})
+                train_loss = sess.run(loss,feed_dict={inputs: inputs_, targets: targets_,training_mode: False})
+                val_loss = sess.run(loss,feed_dict={inputs: validation_X, targets: validation_Y,training_mode: False})
+                
+                print("validation shape",validation_X.shape)
+                summary = sess.run(merge,feed_dict={inputs: validation_X, targets: validation_Y, training_mode: False})
+                train_writer.add_summary(summary,epoch_counter)#,step=tf.train.get_global_step())
+
+                elapsed = time.time() - t0
+
+                print("training / validation loss epoch %i : %.3e / %.3e "%(epoch_counter,train_loss,val_loss))
+                print("training / validation accuracy: %.3e / %.3e"%(train_accuracy,val_accuracy))
+                print("time elapse: %.2f"%elapsed)
+
 
 
 if __name__ == "__main__":
