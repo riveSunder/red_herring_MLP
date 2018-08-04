@@ -21,7 +21,7 @@ tf.app.flags.DEFINE_float('learning_rate',1e-3,"""Learning rate for classificati
 tf.app.flags.DEFINE_float('dropout_rate',0.0,"""dropout rate""")
 tf.app.flags.DEFINE_integer('layer_size',64,"""starting hidden layer size""")
 tf.app.flags.DEFINE_integer('unit_divisor',1,"""fraction of prior layer's units in each subsequent layer. E.g. a factor of 2 halves the units in each layer""")
-tf.app.flags.DEFINE_integer('max_epochs',150,"""Number of epochs to train""")
+tf.app.flags.DEFINE_integer('max_steps',150,"""Number of epochs to train""")
 tf.app.flags.DEFINE_integer('batch_size',50,"""batch size""")
 tf.app.flags.DEFINE_string('graph_dir',"./graph/run1","""Directory for storing tensorboard summaries""")
 tf.app.flags.DEFINE_string('dataset',"iris","""Datset for training""")
@@ -29,7 +29,7 @@ tf.app.flags.DEFINE_string('dataset',"iris","""Datset for training""")
 learning_rate = FLAGS.learning_rate
 unit_divisor = FLAGS.unit_divisor
 layer_size = FLAGS.layer_size
-max_epochs = FLAGS.max_epochs
+max_steps = FLAGS.max_steps
 batch_size = FLAGS.batch_size
 dropout_rate = FLAGS.dropout_rate
 graph_dir = FLAGS.graph_dir
@@ -109,12 +109,12 @@ number_classes = int(np.max(Y))+1# 3 classes for iris dataset
 with tf.variable_scope("lucky_MLP"):
 	# weights
 	w0 = tf.get_variable("w0",initializer=tf.truncated_normal([number_features,layer0_size],stddev=0.05))
-	w1 = tf.get_variable("w1",initializer=tf.truncated_normal([layer1_size,layer2_size],stddev=0.05))
-	w2 = tf.get_variable("w2",initializer=tf.truncated_normal([layer2_size,layer3_size],stddev=0.05))
-	w3 = tf.get_variable("w3",initializer=tf.truncated_normal([layer3_size,layer4_size],stddev=0.05))
-	w4 = tf.get_variable("w4",initializer=tf.truncated_normal([layer4_size,layer5_size],stddev=0.05))
-	w5 = tf.get_variable("w5",initializer=tf.truncated_normal([layer5_size,layer6_size],stddev=0.05))
-	w6 = tf.get_variable("w6",initializer=tf.truncated_normal([layer6_size,number_classes],stddev=0.05))
+	w1 = tf.get_variable("w1",initializer=tf.truncated_normal([layer0_size,layer1_size],stddev=0.05))
+	w2 = tf.get_variable("w2",initializer=tf.truncated_normal([layer1_size,layer2_size],stddev=0.05))
+	w3 = tf.get_variable("w3",initializer=tf.truncated_normal([layer2_size,layer3_size],stddev=0.05))
+	w4 = tf.get_variable("w4",initializer=tf.truncated_normal([layer3_size,layer4_size],stddev=0.05))
+	w5 = tf.get_variable("w5",initializer=tf.truncated_normal([layer4_size,layer5_size],stddev=0.05))
+	w6 = tf.get_variable("w6",initializer=tf.truncated_normal([layer5_size,number_classes],stddev=0.05))
 
 	# biases
 	starting_bias = 1e-3
@@ -180,12 +180,13 @@ tf.summary.histogram("weights_3",w3)
 tf.summary.histogram("weights_4",w4)
 tf.summary.histogram("weights_5",w5)
 tf.summary.histogram("weights_6",w6)
-tf.summary.image("layer_0_activations",tf.reshape(layer_0,[-1, dimX, dimY,1]))
-tf.summary.image("layer_1_activations",tf.reshape(layer_1,[-1, dimX, dimY,1]))
-tf.summary.image("layer_2_activations",tf.reshape(layer_2,[-1, dimX, dimY,1]))
-tf.summary.image("layer_3_activations",tf.reshape(layer_3,[-1, dimX, dimY,1]))
-tf.summary.image("layer_5_activations",tf.reshape(layer_4,[-1, dimX, dimY,1]))
-tf.summary.image("layer_6_activations",tf.reshape(layer_5,[-1, dimX, dimY,1]))
+if(0):
+    tf.summary.image("layer_0_activations",tf.reshape(layer_0,[-1, dimX, dimY,1]))
+    tf.summary.image("layer_1_activations",tf.reshape(layer_1,[-1, dimX, dimY,1]))
+    tf.summary.image("layer_2_activations",tf.reshape(layer_2,[-1, dimX, dimY,1]))
+    tf.summary.image("layer_3_activations",tf.reshape(layer_3,[-1, dimX, dimY,1]))
+    tf.summary.image("layer_5_activations",tf.reshape(layer_4,[-1, dimX, dimY,1]))
+    tf.summary.image("layer_6_activations",tf.reshape(layer_5,[-1, dimX, dimY,1]))
 
 
 
@@ -232,7 +233,7 @@ def main():
 		print("./"+dataset+"/"+graph_dir)
 
 		print("start training")
-		for epoch_counter in range(max_epochs):
+		for epoch_counter in range(max_steps):
 			for batch_counter in range(0,batch_size,len(train_X)):
 
 				# iterate through training data
