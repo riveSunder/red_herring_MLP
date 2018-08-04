@@ -28,6 +28,7 @@ tf.app.flags.DEFINE_integer('max_steps',150,"""Number of epochs to train""")
 tf.app.flags.DEFINE_integer('batch_size',64,"""batch size""")
 tf.app.flags.DEFINE_string('graph_dir',"./layersmodel/run1","""Directory for storing tensorboard summaries""")
 tf.app.flags.DEFINE_string('dataset',"iris","""Datset for training""")
+tf.app.flags.DEFINE_integer('random_seed',0,"""dropout rate""")
 
 learning_rate = FLAGS.learning_rate
 unit_divisor = FLAGS.unit_divisor
@@ -37,6 +38,11 @@ batch_size = FLAGS.batch_size
 dropout_rate = FLAGS.dropout_rate
 graph_dir = FLAGS.graph_dir
 dataset = FLAGS.dataset
+random_seed = FLAGS.random_seed
+
+
+
+tf.set_random_seed(random_seed)
 
 if (layer_size ==1):
 	layer_size = 1
@@ -95,7 +101,7 @@ layer4_size = int(layer3_size*unit_divisor) #16
 layer5_size = int(layer4_size*unit_divisor) #32
 layer6_size = int(layer5_size*unit_divisor) #64 
 
-random_seed = 42 # I wonder how much the ubiquity of using this seed influences ML research? 
+ 
 
 # load the iris dataset from sklearn datasets
 import sklearn.datasets as datasets
@@ -132,7 +138,6 @@ mode = tf.placeholder("bool",name="mode")
 #with tf.variable_scope("lucky_MLP"):
 # weights
 #g = tf.graph
-
 
 def matmul_MLP(inputs,targets,mode):
 	
@@ -253,7 +258,7 @@ def main(unused_argv):
 	# Define the estimator
 	MLP_classifier = learn.Estimator(model_fn = matmul_MLP,\
 		model_dir = graph_dir,\
-		config=tf.contrib.learn.RunConfig(save_checkpoints_secs=30))
+		config=tf.contrib.learn.RunConfig(save_checkpoints_secs=3))
 
 	#Assign metrics
 	metrics = {"accuracy": learn.MetricSpec(metric_fn=tf.metrics.accuracy,prediction_key="classes")}

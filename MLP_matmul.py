@@ -25,6 +25,7 @@ tf.app.flags.DEFINE_integer('max_steps',150,"""Number of epochs to train""")
 tf.app.flags.DEFINE_integer('batch_size',50,"""batch size""")
 tf.app.flags.DEFINE_string('graph_dir',"./graph/run1","""Directory for storing tensorboard summaries""")
 tf.app.flags.DEFINE_string('dataset',"iris","""Datset for training""")
+tf.app.flags.DEFINE_float('random_seed',0.0,"""dropout rate""")
 
 learning_rate = FLAGS.learning_rate
 unit_divisor = FLAGS.unit_divisor
@@ -34,6 +35,11 @@ batch_size = FLAGS.batch_size
 dropout_rate = FLAGS.dropout_rate
 graph_dir = FLAGS.graph_dir
 dataset = FLAGS.dataset
+random_seed = FLAGS.random_seed
+
+
+
+tf.set_random_seed(random_seed)
 
 
 if (layer_size <=16):
